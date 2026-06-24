@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Litebook - Catatan Keuangan</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: rgba(255, 255, 255, 0.8);
+            --card-solid: #ffffff;
+            --text: #0f172a;
+            --text-light: #475569;
+            --border: rgba(226, 232, 240, 0.8);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --glass: blur(16px);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card: rgba(30, 41, 59, 0.8);
+            --card-solid: #1e293b;
+            --text: #f8fafc;
+            --text-light: #cbd5e1;
+            --border: rgba(51, 65, 85, 0.8);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.12) 0px, transparent 50%);
+            color: var(--text);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+   .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            backdrop-filter: var(--glass);
+            background: var(--card);
+            padding: 16px 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+   .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+   .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+   .icon-btn {
+            background: var(--card-solid);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+        }
+
+   .icon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+   .icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+   .hero-balance {
+            background: var(--card);
+            backdrop-filter: var(--glass);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+   .balance-label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+   .balance-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 24px;
+            letter-spacing: -1.5px;
+        }
+
+   .balance-split {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+   .split-item {
+            text-align: center;
+        }
+
+   .split-label {
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+   .split-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+   .split-income { color: var(--success); }
+   .split-expense { color: var(--danger); }
+
+        @media (max-width: 640px) {
+      .balance-amount { font-size: 2.25rem; }
+      .balance-split { gap: 24px; }
+      .split-value { font-size: 1.25rem; }
+        }
+
+   .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+      .main-grid { grid-template-columns: 1fr; }
+        }
+
+   .card {
+            background: var(--card);
+            backdrop-filter: var(--glass);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+   .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+   .chart-container {
+            position: relative;
+            height: 280px;
+            margin-top: 16px;
+        }
+
+   .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+   .insight-item {
+            background: var(--card-solid);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+   .insight-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+   .insight-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+   .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--card-solid);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+   .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+   .btn-type {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--border);
+            background: var(--card-solid);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+            color: var(--text);
+        }
+
+   .btn-type.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            transform: scale(1.02);
+        }
+
+   .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+   .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+
+   .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+            transition: all 0.3s;
+            z-index: 100;
+            font-weight: 300;
+        }
+
+   .fab:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+   .transaction-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+   .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: var(--card-solid);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+   .transaction-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow);
+        }
+
+   .transaction-info {
+            flex: 1;
+        }
+
+   .transaction-cat {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+   .transaction-date {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+   .transaction-amount {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+   .amount-income { color: var(--success); }
+   .amount-expense { color: var(--danger); }
+
+   .delete-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 8px;
+            margin-left: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 1.1rem;
+        }
+
+   .transaction-item:hover.delete-btn {
+            opacity: 0.6;
+        }
+
+   .delete-btn:hover { opacity: 1; }
+
+   .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+   .filter-row input,.filter-row select {
+            flex: 1;
+            min-width: 150px;
+        }
+
+   .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: var(--card-solid);
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            font-weight: 600;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+   .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+   .empty-state svg {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+   .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+   .modal.active {
+            display: flex;
+        }
+
+   .modal-content {
+            background: var(--card-solid);
+            padding: 32px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+    
+     <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+    
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">📒 Litebook</div>
+            <div class="header-actions">
+                <!-- UPDATE: Langsung Export PDF aja -->
+                <button class="icon-btn" id="exportBtn" onclick="exportPDF()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export PDF
+                </button>
+                <button class="icon-btn" id="themeToggle" title="Ganti Tema">
+                    <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="hero-balance">
+            <div class="balance-label">Uang Rp.</div>
+            <div class="balance-amount" id="balance">0</div>
+            <div class="balance-split">
+                <div class="split-item">
+                    <div class="split-label split-income">Pemasukan</div>
+                    <div class="split-value split-income" id="totalIncome">Rp 0</div>
+                </div>
+                <div class="split-item">
+                    <div class="split-label split-expense">Pengeluaran</div>
+                    <div class="split-value split-expense" id="totalExpense">Rp 0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div>
+                <div class="card" style="margin-bottom: 24px;">
+                    <h2>⚡ Quick Add</h2>
+                    <div class="btn-group">
+                        <button class="btn-type active" data-type="income">Pemasukan</button>
+                        <button class="btn-type" data-type="expense">Pengeluaran</button>
+                    </div>
+                    <form id="transactionForm">
+                        <div class="form-group">
+                            <label>Jumlah</label>
+                            <input type="text" id="amount" placeholder="0" required inputmode="numeric">
+                        </div>
+                        <div class="form-group">
+                            <label>Kategori</label>
+                            <select id="category" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Catatan</label>
+                            <input type="text" id="note" placeholder="Opsional">
+                        </div>
+                        <button type="submit" class="btn">Simpan Transaksi</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>📊 Analytics</h2>
+                    <div class="chart-container">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                    <div class="insights-grid" id="insights"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card" style="margin-bottom: 24px;">
+                    <h2>📈 Trend Bulanan</h2>
+                    <div class="chart-container">
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📋 Riwayat Transaksi</h2>
+                    <div class="filter-row">
+                        <input type="text" id="searchInput" placeholder="Cari transaksi...">
+                        <select id="filterType">
+                            <option value="all">Semua</option>
+                            <option value="income">Pemasukan</option>
+                            <option value="expense">Pengeluaran</option>
+                        </select>
+                        <input type="date" id="startDate">
+                        <input type="date" id="endDate">
+                    </div>
+                    <div class="transaction-list" id="transactionList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="fab" id="fabBtn">+</button>
+
+    <footer>
+        © <span id="year"></span> Litebook. All rights reserved.
+    </footer>
+
+    <div class="modal" id="onboardingModal">
+        <div class="modal-content">
+            <h2>🎉 Selamat Datang di Litebook!</h2>
+            <p style="margin: 16px 0; color: var(--text-light);">Mulai catat keuanganmu dengan mudah. Semua data tersimpan aman di browser kamu.</p>
+            <button class="btn" onclick="closeOnboarding()">Mulai Sekarang</button>
+        </div>
+    </div>
+
+    <script>
+        let transactions = JSON.parse(localStorage.getItem('litebook')) || [];
+        let currentType = 'income';
+        let pieChart, lineChart;
+
+        const categories = {
+            income: ['Gaji', 'Freelance', 'Investasi', 'Bonus', 'Lainnya'],
+            expense: ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Hiburan', 'Kesehatan', 'Lainnya']
+        };
+
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        if (transactions.length === 0 &&!localStorage.getItem('onboarded')) {
+            document.getElementById('onboardingModal').classList.add('active');
+        }
+
+        document.getElementById('date').valueAsDate = new Date();
+        updateCategoryOptions();
+        initCharts();
+        renderAll();
+
+        const themeIcon = document.getElementById('themeIcon');
+        const moonSVG = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+        const sunSVG = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+
+        function updateThemeIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            themeIcon.innerHTML = theme === 'dark'? sunSVG : moonSVG;
+        }
+
+        document.getElementById('themeToggle').onclick = () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark'? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon();
+            updateCharts();
+        };
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon();
+
+        document.querySelectorAll('.btn-type').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.btn-type').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentType = btn.dataset.type;
+                updateCategoryOptions();
+            };
+        });
+
+        function updateCategoryOptions() {
+            const select = document.getElementById('category');
+            select.innerHTML = categories[currentType].map(c =>
+                `<option value="${c}">${c}</option>`
+            ).join('');
+        }
+
+        const amountInput = document.getElementById('amount');
+        amountInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value) {
+                value = parseInt(value).toLocaleString('id-ID');
+                e.target.value = value;
+            }
+        });
+
+        document.getElementById('transactionForm').onsubmit = (e) => {
+            e.preventDefault();
+            const rawAmount = document.getElementById('amount').value.replace(/\./g, '');
+            if (!rawAmount || parseFloat(rawAmount) === 0) {
+                showToast('❌ Nominal tidak boleh kosong!');
+                return;
+            }
+            const transaction = {
+                id: Date.now(),
+                type: currentType,
+                amount: parseFloat(rawAmount),
+                category: document.getElementById('category').value,
+                date: document.getElementById('date').value,
+                note: document.getElementById('note').value
+            };
+            transactions.unshift(transaction);
+            saveAndRender();
+            e.target.reset();
+            document.getElementById('date').valueAsDate = new Date();
+            showToast('✅ Transaksi berhasil disimpan!');
+        };
+
+        document.getElementById('fabBtn').onclick = () => {
+            document.getElementById('amount').focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        document.getElementById('searchInput').oninput = renderTransactions;
+        document.getElementById('filterType').onchange = renderTransactions;
+        document.getElementById('startDate').onchange = renderTransactions;
+        document.getElementById('endDate').onchange = renderTransactions;
+
+        function exportPDF() {
+            if (typeof window.jspdf === 'undefined') {
+                showToast('⏳ Library PDF lagi loading, tunggu 2 detik...');
+                setTimeout(exportPDF, 2000);
+                return;
+            }
+
+            if (transactions.length === 0) {
+                showToast('❌ Nggak ada data buat di-export!');
+                return;
+            }
+
+            showToast('⏳ Lagi bikin PDF...');
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                doc.setFontSize(20);
+                doc.setTextColor(99, 102, 241);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Litebook - Laporan Keuangan', 14, 22);
+
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}`, 14, 30);
+
+                const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                const balance = income - expense;
+
+                doc.setFontSize(12);
+                doc.setTextColor(0);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Total Pemasukan: ${formatRupiah(income)}`, 14, 42);
+                doc.text(`Total Pengeluaran: ${formatRupiah(expense)}`, 14, 50);
+                doc.setFontSize(14);
+                doc.setTextColor(99, 102, 241);
+                doc.text(`Saldo: ${formatRupiah(balance)}`, 14, 60);
+
+                const tableData = transactions.map(t => [
+                    formatDate(t.date),
+                    t.category,
+                    t.type === 'income'? 'Pemasukan' : 'Pengeluaran',
+                    formatRupiah(t.amount),
+                    t.note || '-'
+                ]);
+
+                doc.autoTable({
+                    startY: 70,
+                    head: [['Tanggal', 'Kategori', 'Jenis', 'Jumlah', 'Catatan']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [99, 102, 241], fontStyle: 'bold' },
+                    styles: { fontSize: 9, font: 'helvetica' },
+                    columnStyles: {
+                        3: { halign: 'right' }
+                    },
+                    didDrawPage: function (data) {
+                        doc.setFontSize(8);
+                        doc.setTextColor(150);
+                        doc.text(`© ${new Date().getFullYear()} Litebook - Halaman ${data.pageNumber}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                    }
+                });
+
+                doc.save(`litebook_${new Date().toISOString().split('T')[0]}.pdf`);
+                showToast('📄 PDF berhasil di-download!');
+            } catch (error) {
+                console.error('PDF Error:', error);
+                showToast('❌ Gagal bikin PDF. Coba refresh halaman!');
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('litebook', JSON.stringify(transactions));
+            renderAll();
+        }
+
+        function renderAll() {
+            renderStats();
+            renderTransactions();
+            updateCharts();
+            renderInsights();
+        }
+
+        function renderStats() {
+            const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+            const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            document.getElementById('totalIncome').textContent = formatRupiah(income);
+            document.getElementById('totalExpense').textContent = formatRupiah(expense);
+            document.getElementById('balance').textContent = formatRupiah(income - expense);
+        }
+
+        function renderTransactions() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filterType = document.getElementById('filterType').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let filtered = transactions;
+            if (search) filtered = filtered.filter(t =>
+                t.category.toLowerCase().includes(search) ||
+                t.note.toLowerCase().includes(search)
+            );
+            if (filterType!== 'all') filtered = filtered.filter(t => t.type === filterType);
+            if (startDate) filtered = filtered.filter(t => t.date >= startDate);
+            if (endDate) filtered = filtered.filter(t => t.date <= endDate);
+
+            const list = document.getElementById('transactionList');
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2.9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            <path d="M7 12h10v2H7z"/>
+                        </svg>
+                        <p>Belum ada transaksi</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(t => `
+                <div class="transaction-item">
+                    <div class="transaction-info">
+                        <div class="transaction-cat">${t.category}</div>
+                        <div class="transaction-date">${formatDate(t.date)} ${t.note? '• ' + t.note : ''}</div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div class="transaction-amount amount-${t.type}">
+                            ${t.type === 'income'? '+' : '-'} ${formatRupiah(t.amount)}
+                        </div>
+                        <button class="delete-btn" onclick="deleteTransaction(${t.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id!== id);
+            saveAndRender();
+            showToast('🗑️ Transaksi dihapus');
+        }
+
+        function initCharts() {
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') } } }
+                }
+            });
+
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Pemasukan', data: [], borderColor: '#10b981', tension: 0.4 },
+                        { label: 'Pengeluaran', data: [], borderColor: '#ef4444', tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') } } },
+                    scales: {
+                        y: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-light') } },
+                        x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-light') } }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text');
+            const textLight = getComputedStyle(document.documentElement).getPropertyValue('--text-light');
+
+            const expenses = transactions.filter(t => t.type === 'expense');
+            const byCat = {};
+            expenses.forEach(t => {
+                byCat[t.category] = (byCat[t.category] || 0) + t.amount;
+            });
+            const colors = ['#ef4444', '#f59e0b', '#ec4899', '#6366f1', '#8b5cf6', '#10b981', '#6b7280'];
+            pieChart.data.labels = Object.keys(byCat);
+            pieChart.data.datasets[0].data = Object.values(byCat);
+            pieChart.data.datasets[0].backgroundColor = colors.slice(0, Object.keys(byCat).length);
+            pieChart.options.plugins.legend.labels.color = textColor;
+            pieChart.update();
+
+            const months = [];
+            const incomeData = [];
+            const expenseData = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date();
+                d.setMonth(d.getMonth() - i);
+                const monthStr = d.toISOString().substring(0, 7);
+                months.push(d.toLocaleDateString('id-ID', { month: 'short' }));
+                const monthTx = transactions.filter(t => t.date.startsWith(monthStr));
+                incomeData.push(monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
+                expenseData.push(monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+            }
+            lineChart.data.labels = months;
+            lineChart.data.datasets[0].data = incomeData;
+            lineChart.data.datasets[1].data = expenseData;
+            lineChart.options.plugins.legend.labels.color = textColor;
+            lineChart.options.scales.y.ticks.color = textLight;
+            lineChart.options.scales.x.ticks.color = textLight;
+            lineChart.update();
+        }
+
+        function renderInsights() {
+            const expenses = transactions.filter(t => t.type === 'expense');
+            if (expenses.length === 0) {
+                document.getElementById('insights').innerHTML = '<p style="color: var(--text-light);">Belum ada data</p>';
+                return;
+            }
+
+            const byCat = {};
+            expenses.forEach(t => {
+                byCat[t.category] = (byCat[t.category] || 0) + t.amount;
+            });
+            const topCat = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+
+            const avgDaily = expenses.reduce((s, t) => s + t.amount, 0) / 30;
+
+            const catCount = {};
+            expenses.forEach(t => {
+                catCount[t.category] = (catCount[t.category] || 0) + 1;
+            });
+            const mostFrequent = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0];
+
+                        document.getElementById('insights').innerHTML = `
+                <div class="insight-item">
+                    <div class="insight-label">Pengeluaran Terbesar</div>
+                    <div class="insight-value">${topCat[0]}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light);">${formatRupiah(topCat[1])}</div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-label">Rata-rata Harian</div>
+                    <div class="insight-value">${formatRupiah(Math.round(avgDaily))}</div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-label">Transaksi Terbanyak</div>
+                    <div class="insight-value">${mostFrequent[0]}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light);">${mostFrequent[1]}x transaksi</div>
+                </div>
+            `;
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function closeOnboarding() {
+            document.getElementById('onboardingModal').classList.remove('active');
+            localStorage.setItem('onboarded', 'true');
+        }
+
+        function formatRupiah(num) {
+            return 'Rp ' + num.toLocaleString('id-ID');
+        }
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        
+        // Register Service Worker buat PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(err => console.log('SW failed:', err));
+  });
+}
+        
+    </script>
+</body>
+</html>
